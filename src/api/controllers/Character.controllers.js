@@ -193,9 +193,16 @@ const deleteCharacter = async (req, res, next) => {
     //Esto anterior nos devuelve siempre el elemento buscado pero puede ser que no haya borrado, por eso cuidado
     if (deleteCharacter) {
       //Para ver que esto esta correctamente borrado lo buscamos en la db, si no esta elimino la imagen y si esta lanzo un next para acabe con la ejecucion
-      (await Character.findById(id))
-        ? next("Error while deleting image")
-        : deleteImgCloudinary(deleteCharacter.image);
+      if(await Character.findById(id)){
+        next("Error while deleting image")
+      }else{
+        deleteImgCloudinary(deleteCharacter.image);
+        //Una vez borrada la imagen de cloudinary, cojo y busco la pelicula y para que haya consistencia va a sacar las peliculas. 
+        await Movie.updateMany({characters: id},{
+          $pull: {characters: id}
+        })
+      }
+        
       //Si todo se ha hecho correctamente lanzamos un 200, no obstante tambien test en el runtime que se haya hecho correctamente con la clave test
       return res.status(200).json({
         deleteObject: deleteCharacter,
