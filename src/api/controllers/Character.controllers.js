@@ -13,9 +13,25 @@ const create = async (req, res, next) => {
     let catchImg = req.file?.path;
     try {
       await Character.syncIndexes();
+      //Creamos este objeto para poder en un array el id de la pelicula o peliculas a la que character pertenece
+      const filterBody = {
+        name: req.body.name,
+        gender: req.body.gender,
+        
+      }
       //Creamos un nuevo modelo con los datos que nos trae la request body
-      const newCharacter = new Character(req.body);
-  
+      const newCharacter = new Character(filterBody);
+
+
+      //Cogemos las movies de la req.body y las recorremos
+      const {movie} = req.body
+      //Con esta linea de codigo podremos introducir los ids de las peliculas a las que los characters pertenecen
+     const arrayMovie = movie.split(",")
+     arrayMovie.forEach((item)=>{
+      newCharacter.movie.push(item);
+
+     })
+      
       //Con este codigo, si el usuario envia imagen le metemos la que nos envia, pero sino le metemos una foto general por defecto.
       if (req.file) {
         newCharacter.image = req.file.path;
@@ -25,22 +41,42 @@ const create = async (req, res, next) => {
   
       //Lo guardamos en la database
       const saveCharacter = await newCharacter.save();
+      //Aqui es donde haremos el push en movie metiendo los personajes
+      arrayMovie.forEach(async(item, index)=>{
+
+        const characterById = await Character.findById(saveCharacter._id)
+        await characterById.updateOne({
+          //La siguiente linea nos servirá para meter en el array de character en movies el character que aquí estemos creando
+          $push: {movie: item},
+         
+        })
+      })
   
       // Evaluamos que se haya efectuado correctamente
       if (saveCharacter) {
         //En caso correcto: se envia un codigo 200 (Codigo que indica que todo esta correcto) y un json con el objeto posteado
         //Aqui es donde postearemos en movie. Primero crearemos la pelicula a la que queremos apuntar, con los siguientes const
-        const { idMovie } = req.body
-        const movieById = await Movie.findById(idMovie)
-        await movieById.updateOne({
-          //La siguiente linea nos servirá para meter en el array de character en movies el character que aquí estemos creando
-          $push: {characters: saveCharacter._id}
+        const arrayTest = []
+         arrayMovie.forEach(async(itemID)=>{
+           const movieById = await Movie.findById(itemID)
+           await movieById.updateOne({
+             //La siguiente linea nos servirá para meter en el array de character en movies el character que aquí estemos creando
+             $push: {characters: saveCharacter._id},
+            
+           })
+           const testUpdateMovie = await Movie.findById(itemID);
+            arrayTest.push({
+            idMovie: itemID,
+            idCharacter: newCharacter._id,
+            testMovieUpdate: testUpdateMovie.characters.includes(saveCharacter._id) ? true : false,
+
         })
-        const testUpdateMovie = await Movie.findById(idMovie)
+        })
+        
         //Tendremos que modificar el json original porque necesitaremos que de feedback de que todo lo anterior se ha realizado
         return res.status(200).json({
           newCharacter: saveCharacter,
-          testMovieUpdate: testUpdateMovie.characters.includes(saveCharacter._id) ? 'ok movie updated' : 'Not ok, movie was not updated'
+          testMovieUpdate: arrayTest,
         });
       } else {
         //En caso negativo: se envia un 404 not found(Codigo que se utiliza tanto para el not found como no el not correct), que indica que no se ha enviado el elemento a la database
@@ -198,7 +234,8 @@ const deleteCharacter = async (req, res, next) => {
       }else{
         deleteImgCloudinary(deleteCharacter.image);
         //Una vez borrada la imagen de cloudinary, cojo y busco la pelicula y para que haya consistencia va a sacar las peliculas. 
-        await Movie.updateMany({characters: id},{
+        await Movie.updateMany({characters: id},
+          {
           $pull: {characters: id}
         })
       }
@@ -223,3 +260,15 @@ module.exports = {
   updateCharacter,
   deleteCharacter,
 };
+
+
+//Como crear un dato de TYPE OBJECT ID, ejemplo adicional//
+//arrayMovie.forEach((item)=>{
+//  console.log(item);
+//  const idObject = new ObjectId(item);
+//    newCharacter.movie.push(idObject);
+//});
+
+//const mongoose = require("mongoose"),ObjectId;
+//const ObjectId = require("mongodb").ObjectId;
+//const new ObjectId = new mongoose("idquequeramos")

@@ -1,4 +1,5 @@
 //Nos traemos el modelo de movies.
+const Character = require('../models/Character.model');
 const Movie = require('../models/Movies.model');
 
 //Nos traemos el CRUD de Chracter.controllers, lo copiamos y pegamos, pues usaremos los mismos 'metodos'
@@ -127,11 +128,19 @@ const deleteMovie = async (req, res, next) => {
 
     //Esto anterior nos devuelve siempre el elemento buscado pero puede ser que no haya borrado, por eso cuidado
     if (deleteMovie) {
+      //Aqui debemos añadir un await para que al borrar una pelicula se borre del array "movies" de cada character
+     await Character.updateMany({
+        movie: id,
+      },{
+        $pull: {movie: id}
+      })
+      const testCharacter = await Character.find({movie: id})
         //A continuacion tendremos que hacer el test, porque esto nos va a devolver siempre algo, aunque no haya borrado. Por eso tenemos que asegurarnos de dar feedback al frontal en todo momento.
         return res.status(200).json({
             deleteMovie: deleteMovie,
             //El test consiste en buscar la pelicula borrada por id, para en caso de ser encontrada aun pese haber sido borrada demos el aviso(Todo esto es el ternario)
             test: await Movie.findById(id)? 'Error while deleting, movie was not deleted' : 'Movie was succesfully deleted',
+            test: testCharacter.length > 0 ? 'Error while updating characters' : 'Succesfully updated characters'
         })
       
     } else {

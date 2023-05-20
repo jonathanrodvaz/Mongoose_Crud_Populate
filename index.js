@@ -13,9 +13,9 @@ const PORT = process.env.PORT;
 
 
 
-//Esto es para introducir limitaciones en la recepcion y envio de datos, para que no se envien datos que son de más de 5mb
+//Esto es para introducir limitaciones en la recepcion y envio de datos, para que no se envien datos que son de más de 5mb. Si hubiera problemas con las subidas te saldría un error sobre el rate, en ese caso puedes poner 15mb
 app.use(express.json({ limit: '5mb'}));
-app.use(express.urlencoded({ limit: '5mb', extended: false }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
 
 
